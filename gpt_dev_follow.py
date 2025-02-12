@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import AdamW
 from preprocess import read_file, extract_unique_characters, create_character_mapping, split_dataset,encode,decode
-from models import BigramModel
+from models import BigramModel, TransformerModel
 from pathlib import Path
 #%%
 # get words
@@ -16,13 +16,14 @@ stoi,itos = create_character_mapping(chars)
 train_data, val_data = split_dataset(text,train_size=0.9)
 
 # %% hyper parameters
-block_size = 8
-batch_size = 4
-num_heads = 6
-hidden_dim = 128
-vocab_size = len(stoi)
+batch_size = 4 # B
+block_size = 8 # T 
+num_heads = 6 # n_heads
+n_embd = 36 # E
+vocab_size = len(stoi) # V
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 200
+n_layers = 3
 #%% Get batch, estimate loss
 # data loading
 def get_batch(split):
@@ -49,11 +50,17 @@ def estimate_loss():
     return out
  #%% Train model
 
-model = BigramModel(vocab_size)
+model = TransformerModel(block_size,vocab_size,n_embd,num_heads,n_layers)
 model.to(device)
 optimizer = AdamW(model.parameters(),lr=0.001)
 # training loop
+#%% single forward pass 
 
+xb,yb = get_batch('train')
+logits,loss = model(xb,yb)
+
+
+#%%
 for k in range(10000):
     xb,yb = get_batch('train')
     logits,loss = model(xb,yb)
@@ -70,7 +77,7 @@ for k in range(10000):
 #%% Sampling
 
 g = torch.Generator().manual_seed(2147483647)
-sampling = model.generate(torch.zeros((1,1),dtype=torch.long,device=device),max_new_tokens=100).squeeze()
+sampling = model.generate(torch.zeros((1,1),dtype=torch.long,device=device),max_new_tokens=1000).squeeze()
 print(decode(sampling.tolist()))
 
 #%% #rough
