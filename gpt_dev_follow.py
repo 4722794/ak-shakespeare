@@ -82,20 +82,23 @@ print(decode(sampling.tolist()))
 
 #%% #rough
 
-B,T,C = 4,8,32
-x = torch.randn(B,T,C)
-head_size = 16
-key = nn.Linear(C,head_size,bias=False)
-query = nn.Linear(C,head_size,bias=False)
-value = nn.Linear(C,head_size,bias=False)
-k = key(x)
-q = query(x)
-v = value(x)
+B,T,E = 4,8,32
+x = torch.randn(B,T,E)
+num_heads = 4
+head_size = E // num_heads
+key = nn.Linear(E,E,bias=False)
+query = nn.Linear(E,E,bias=False)
+value = nn.Linear(E,E,bias=False)
+k = key(x).view(B,T,num_heads,-1).transpose(1,2)
+q = query(x).view(B,T,num_heads,-1).transpose(1,2)
+v = value(x).view(B,T,num_heads,-1).transpose(1,2)
 #%%
-scores = q @ k.transpose(1,-1)
+scores = q @ k.transpose(-2,-1)
 tril = torch.tril(torch.ones(T,T))
-
+#%%
 scores = scores.masked_fill(tril==0,float('-inf')) * (head_size**-0.5)
 attn_probs = F.softmax(scores,dim=-1)
 out = attn_probs @ v
+out = out.transpose(1, 2).contiguous().view(B, T, E)
+
 # %%

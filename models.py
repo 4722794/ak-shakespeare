@@ -71,7 +71,7 @@ class TransformerModel(nn.Module):
 class AttentionBlock(nn.Module):
     def __init__(self, block_size, embd_size, num_heads):
         super().__init__()
-        self.multi_head = MultiHead(num_heads, block_size, embd_size)
+        self.multi_head = CasualAttentionHead(block_size, embd_size,num_heads)
         self.feed_forward = FeedForward(embd_size)
         self.ln1 = nn.LayerNorm(embd_size)
         self.ln2 = nn.LayerNorm(embd_size)
@@ -95,6 +95,35 @@ class FeedForward(nn.Module):
         x = self.net(x)
         x = self.dropout(x)
         return x
+
+class CasualAttentionHead(nn.Module):
+    def __init__(self,block_size,embd_size,num_heads):
+        super().__init__()
+        # Initialize your layers here
+        self.num_heads = num_heads
+        self.key = nn.Linear(embd_size, embd_size, bias=False)
+        self.query = nn.Linear(embd_size, embd_size, bias=False)
+        self.value = nn.Linear(embd_size, embd_size, bias=False)
+        self.proj = nn.Linear(embd_size, embd_size)
+        self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+        self.dropout = nn.Dropout(0.1)
+
+    def forward(self, x):
+        # Define the forward pass here
+        B,T,E = x.size()
+        head_size = E // self.num_heads
+        k = self.key(x).view(B,T,self.num_heads,-1).transpose(1,2)
+        q = self.query(x).view(B,T,self.num_heads,-1).transpose(1,2)
+        v = self.value(x).view(B,T,self.num_heads,-1).transpose(1,2)
+        attn_scores = torch.matmul(q, k.transpose(-2,-1))* (head_size ** -0.5)
+        masked_attn_scores = attn_scores.masked_fill(self.tril[:T,:T] == 0, float('-inf'))
+        attn_probs = F.softmax(masked_attn_scores, dim=-1)
+        attn_probs = self.dropout(attn_probs)
+        out = torch.matmul(attn_probs, v)
+        out = out.transpose(1,2).contiguous().view(B,T,E)
+        out = self.proj(out)
+        out = self.dropout(out)
+        return out
 
 class MultiHead(nn.Module):
     def __init__(self,num_heads, block_size,embd_size):
