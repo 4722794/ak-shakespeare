@@ -8,7 +8,7 @@ def read_file(filepath):
         text = f.read()
     return text
 
-text = read_file('input.txt')
+text = read_file('cheese.txt')
 
 #%%
 def extract_unique_characters(text):
