@@ -3,3 +3,6 @@ checkpointdir/*
 # *.txt
 *.csv
 *.zip
+*.pth
+*.json
+.DS_Store

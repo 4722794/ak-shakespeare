@@ -10,13 +10,14 @@ from pathlib import Path
 #%%
 # get words
 parentpath = Path(__file__).resolve().parent
-filepath = parentpath / 'input.txt'
+filepath = parentpath / 'cheese.txt'
 checkpointpath = parentpath / 'checkpointdir'
 # create checkpoint dir if it doesn't exist
 checkpointpath.mkdir(exist_ok=True)
 text = read_file(filepath)
 chars = extract_unique_characters(text)
 stoi,itos = create_character_mapping(chars)
+#%%
 train_data, val_data = split_dataset(text,train_size=0.9)
 
 # %% hyper parameters
