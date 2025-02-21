@@ -28,6 +28,7 @@ n_embd = 36 # E
 vocab_size = len(stoi) # V
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 200
+sample_iters = 1000
 n_layers = 3
 #%% Get batch, estimate loss
 # data loading
@@ -58,8 +59,8 @@ def estimate_loss():
 model = TransformerModel(block_size,vocab_size,n_embd,num_heads,n_layers)
 model.to(device)
 optimizer = AdamW(model.parameters(),lr=0.001)
-load_checkpoint = True
-run_train = False
+load_checkpoint = False
+run_train = True
 # if checkpoint.pth exists and user wants to load checkpoint
 if checkpointpath / 'checkpoint.pth' and load_checkpoint:
     checkpoint = torch.load(checkpointpath/'checkpoint.pth')
@@ -87,6 +88,12 @@ if run_train:
         if k % eval_iters == 0:
             losses = estimate_loss()
             print(f'iteration {k}, train loss: {losses["train"]:.3f}, val loss: {losses["val"]:.3f}')
+        
+        if k % sample_iters ==0:
+            starting_phrase = 'To make swiss cheese'
+            x_in = torch.tensor(encode(starting_phrase),dtype=torch.long,device=device).unsqueeze(0)
+            sampling = model.generate(x_in,max_new_tokens=1000).squeeze()
+            print(decode(sampling.tolist()))
 
     # at the end of the training save a checkpoint
     checkpoint = {
@@ -94,17 +101,3 @@ if run_train:
         'optimizer': optimizer.state_dict(),
     }
     torch.save(checkpoint, checkpointpath/'checkpoint.pth')
-#%% Sampling
-
-g = torch.Generator().manual_seed(2147483647)
-sampling = model.generate(torch.zeros((1,1),dtype=torch.long,device=device),max_new_tokens=1000).squeeze()
-print(decode(sampling.tolist()))
-
-#%% # sample with a given input
-
-starting_phrase = 'I urge you brother '
-x_in = torch.tensor(encode(starting_phrase),dtype=torch.long,device=device).unsqueeze(0)
-sampling = model.generate(x_in,max_new_tokens=1000).squeeze()
-print(decode(sampling.tolist()))
-# %%
-2
